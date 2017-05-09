@@ -8,10 +8,14 @@ import (
 	"unsafe"
 )
 
+type ErrCode int
+
+type Fields map[string]interface{}
+
 type Error struct {
 	fields    Fields
 	prefix    []string
-	code      Errcode
+	code      ErrCode
 	err       error
 	stackInfo string
 	pc        uintptr
@@ -24,6 +28,18 @@ func (err Error) Error() {
 	return err.err.Error()
 }
 
+func (err Error) SetCode(code ErrCode) {
+	err.code = code
+}
+
+func (err Error) Code() ErrCode {
+	return err.code
+}
+
+func (err Error) MatchCode(other Error) {
+	return err.code == other.code
+}
+
 func (err Error) EqualTo(other Error) bool {
 	if err.ptr == other.ptr {
 		return true
@@ -31,10 +47,12 @@ func (err Error) EqualTo(other Error) bool {
 	return false
 }
 
-type Fields map[string]interface{}
-
 func Equal(err1, err2 Error) bool {
 	return err1.EqualTo(err2)
+}
+
+func MatchCode(err1, err2 Error) bool {
+	return err1.MatchCode(err2)
 }
 
 func Trace(err error) error {
