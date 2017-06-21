@@ -18,12 +18,12 @@ type Error struct {
 	code      ErrCode
 	err       error
 	stackInfo string
-	pc        uintptr
+	ptr       uintptr
 }
 
-func (err Error) Error() {
+func (err Error) Error() string {
 	if len(err.prefix) != 0 {
-		return strings.Join(err.prefix, ".") + ":" + s.err.Error()
+		return strings.Join(err.prefix, ".") + ":" + err.err.Error()
 	}
 	return err.err.Error()
 }
@@ -36,7 +36,7 @@ func (err Error) Code() ErrCode {
 	return err.code
 }
 
-func (err Error) MatchCode(other Error) {
+func (err Error) MatchCode(other Error) bool {
 	return err.code == other.code
 }
 
@@ -60,26 +60,26 @@ func Trace(err error) error {
 }
 
 func TracePrefix(err error, prefix string) error {
-	err = Wrap(2, err, nil)
-	err.prefix = append(err.prefix, prefix)
-	return err
+	errWrapped := Wrap(2, err, nil)
+	errWrapped.prefix = append(errWrapped.prefix, prefix)
+	return errWrapped
 }
 
-func Wrap(depth int, err error, fields Fields) error {
-	pc, file, line, ok := runtime.Caller(depth)
+func Wrap(depth int, err error, fields Fields) *Error {
+	pc, _, line, ok := runtime.Caller(depth)
 	if !ok {
 		return nil
 	}
 	e, ok := err.(Error)
 	if !ok {
-		err = Error{
+		errWrapped := Error{
 			stackInfo: fmt.Sprintf("%v:%v", filepath.Base(runtime.FuncForPC(pc).Name()), line),
 			err:       err,
 		}
-		err.ptr = uintptr(unsafe.Pointer(&err))
-		return err
+		errWrapped.ptr = uintptr(unsafe.Pointer(&errWrapped))
+		return &errWrapped
 	}
-	err.stackInfo = fmt.Sprintf("%v:%v", filepath.Base(runtime.FuncForPC(pc).Name()), line)
-	err.ptr = uintptr(unsafe.Pointer(&err))
-	return err
+	e.stackInfo = fmt.Sprintf("%v:%v", filepath.Base(runtime.FuncForPC(pc).Name()), line)
+	e.ptr = uintptr(unsafe.Pointer(&e))
+	return &e
 }
